@@ -1,3 +1,7 @@
+"""
+This script provides functions to load and parse a Python script file, generate docstrings, line comments, and a summary for the code, and includes tests for the load_and_parse_script function.
+"""
+
 import ast
 import logging
 import datetime
@@ -43,7 +47,6 @@ def summarize_code(script_ast, comments):
     summary = call_local_llm(prompt)
     script_ast.body.insert(0, ast.Expr(value=ast.Constant(value=f'"""{summary}"""')))
 
-# Helper function to get the source code context for a node
 # Helper function to get the source code context for a node
 def get_source_context(node, script_content):
     if isinstance(node, ast.Module):
@@ -123,6 +126,16 @@ def is_empty_line(node):
 
 # Step 1 (from previous outline)
 def load_and_parse_script(file_path):
+    """
+    Load and parse a Python script into an Abstract Syntax Tree (AST).
+
+    Args:
+        file_path (str): The path to the Python script file.
+
+    Returns:
+        ast.Module or None: The AST representation of the script, or None if an error occurred.
+        str or None: The content of the script file, or None if an error occurred.
+    """
     logging.debug(f"Loading and parsing script: {file_path}")
     try:
         with open(file_path, 'r') as file:
@@ -168,3 +181,41 @@ if __name__ == "__main__":
         save_updated_script(updated_script, script_path)
     else:
         logging.error("Failed to process the script.")
+
+def test_load_and_parse_script_valid_script():
+    """
+    Test the load_and_parse_script function with a valid Python script.
+    """
+    with tempfile.NamedTemporaryFile(mode='w+', encoding='utf-8', suffix='.py', delete=False) as temp_file:
+        temp_file_path = temp_file.name
+        temp_file.write("def test_function():\n pass")
+        temp_file.flush()
+
+    script_ast, script_content = load_and_parse_script(temp_file_path)
+    assert isinstance(script_ast, ast.Module)
+    assert script_content == "def test_function():\n pass"
+
+    os.unlink(temp_file_path)
+
+def test_load_and_parse_script_file_not_found():
+    """
+    Test the load_and_parse_script function with a non-existent file.
+    """
+    script_ast, script_content = load_and_parse_script("non_existent_file.py")
+    assert script_ast is None
+    assert script_content is None
+
+def test_load_and_parse_script_syntax_error():
+    """
+    Test the load_and_parse_script function with a Python script containing a syntax error.
+    """
+    with tempfile.NamedTemporaryFile(mode='w+', encoding='utf-8', suffix='.py', delete=False) as temp_file:
+        temp_file_path = temp_file.name
+        temp_file.write("def test_function()\n pass")
+        temp_file.flush()
+
+    script_ast, script_content = load_and_parse_script(temp_file_path)
+    assert script_ast is None
+    assert script_content == "def test_function()\n pass"
+
+    os.unlink(temp_file_path)
